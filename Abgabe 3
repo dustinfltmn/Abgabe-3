@@ -1,0 +1,172 @@
+git remote add origin https://github.com/dustinfltmn/Abgabe-3.git
+git push -u origin master
+
+# ============================================================
+# Vorlesung Data Science
+# Dustin Flottmann
+# Abgabe Hausarbeit 3
+# ============================================================
+
+
+# Leeren des Workspace
+rm(list = ls())
+
+# Laden der Pakete
+library(dplyr)
+library(lubridate)
+
+# Einlesen der Daten
+df <- read.csv("/home/df584077/vorlagen/FB09/Buecker/DataScience/Daten/zaehlstelle_neutor_2017.csv")
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+#Aufgabe 1 
+# Erstellen Sie zunächst in dem Datensatz der Zählstelle Neutor zusätzliche Variablen:
+#   • eine Variable, welche angibt ob ein Feiertag vorliegt (ja/nein)
+#   • der Monat, Wochentag und die Stunde
+# ----------------------------------------------------------------------------------------------------------------------------------------
+
+
+# Berechnung der zusätzlichen Variablen Wochentag, Monat, Tag und Stunde
+
+  df$Wochentag <- wday(df$Datum, label = TRUE, 
+                     abbr = FALSE, locale = "de_DE.UTF-8")
+
+  df$Monat <- month(df$Datum)
+  df$Stunde <- hour(df$Datum)
+  df$Tag <- yday(df$Datum)
+
+# Zusätzlich Änderungs des jeweiligen jeweiligen Typs in "factor" und Sicherstellung, dass die Faktoren nicht geordnet sind (ordered = false)
+
+  df$Wochentag <- factor(df$Wochentag, ordered = FALSE)
+  df$Stunde <- factor(df$Stunde, ordered = FALSE)
+  df$Monat <- factor(df$Monat, ordered = FALSE)
+  
+# Laden der Feiertagsdaten
+  load("/home/df584077/vorlagen/FB09/Buecker/DataScience/Daten/feiertage.RData")
+  
+# Left-Join des Feiertagsdaten mit über die jeweilige Spalte "Tag"
+  df <- df %>% left_join(feiertage, by = "Tag")  
+  
+# Erstellen der Variable Feiertag Ja/Nein  
+  df$Feiertag <- ifelse(!is.na(df$Feiertag), "Ja", "Nein")
+
+head(df)
+
+summary(df)
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+#Aufgabe 2
+# Verschaffen Sie sich für die folgenden Variablen einen Überblick über deren individuelle Verteilung und
+#deren Korrelation mit der Zielvariable Anzahl, die die Gesamtanzahl der gezählten Radfahrer angibt:
+#  • Stunde
+#• Wochentag
+#• Feiertag
+#• Monat
+#• Temperatur
+#• Windstärke
+#• Wetter
+#Berechnen Sie dazu geeignete Kennzahlen und erstellen Sie vor allem auch grafische Darstellungen
+#(zum Beispiel Boxplot, Histogramm, Scatterplot, Barplot, etc.). Verwenden Sie die nützlichsten auch in Ihrem Bericht!
+# ----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+#Aufgabe 3 
+# Bestimmen Sie ein multiples Regressionsmodell mit Intercept mit den Kovariablen aus Punkt 2 und
+#zusätzlich noch dem Wechselwirkungseffekt zwischen Wochentag und Stunde. Als Zielvariable verwenden
+#Sie log(Anzahl), also dem natürlichen Logarithmus der Gesamtanzahl gezählter Radfahrer.
+#Beurteilen Sie die Güte des Regressionsmodells und treffen Sie eine Aussage über die Bedeutung der
+#Kovariablen.
+# ----------------------------------------------------------------------------------------------------------------------------------------
+
+# Das Multiple Regressionsmodell mit der Zielvariable wird mit der lm Funktion erstellt. Mit log(Anzahl) wird sichergestellt, dass 
+# das Ergebnis immer positiv ist. Als Kovariablen dienen die oben genannten Variablen. 
+# Außerdem wird noch ein Wechselwirkungseffekt zwischen Wochentag und Stunde einbezogen. 
+# Dieser tritt auf, wenn zwei unabhängige Variablen voneinander beeinflusst werden und die Ausprägung der einen Variable von der anderen abhängt.
+# Da sowohl die Wechselwirkung, als auch der Haupteffekt von den zwei Variablen einbezogen werden soll, wird die Kurzschreibweise
+# 'Wochentag * Stunde' genutzt.
+
+  df_regression <- lm(log(Anzahl) ~ Wochentag * Stunde + Feiertag + Temperatur + Windstaerke + Wetter + Monat, data = df)
+
+#Beschreibung des Modells
+
+  df_summary <- summary(df_regression)
+  df_summary
+    
+  #Parameter der summary:
+    #Call           = Funktionsaufruf
+    #Residulas      = Kennzahlen der Residuen (z.B. zur Prüfung der Normalverteilung)
+    #Coefficients   = Tabelle mit Details zu den Koeffizientenschätzern
+      #Estimate     = geschätze Koeffizienten
+      #Std. Error   = Standartabweichung der Schätzung
+      #t value      = t-Teststatistik Hypothese H0
+      #Pr(>|t|)     = H1 Koeffizienten mit p-Wert
+    #***            = Signifikanzlevel
+    #R-squared      = Bestimmtheitsmaß erklärt, inwiefern die AV durch die UV erklärt werden kann
+    #adj. R-squared = adjustiertes Bestimmtheitsmaß
+  
+  #Bedeutung der Kovariablen:
+    #Das Signifikanzniveau zeigt, welche Koeffizienten einen signifikanten Einfluss auf die zielgröße haben. Diese werden in der Summary mit den
+    #Sternchen dargestellt. Die Skala mit den dazugehörigen P-Werten dazu ist unter der Tabelle zu finden. Ei Punkt oder kein Inhalt in der
+    #Spalte bedeutet, dass entweder ein geringer oder kein signifikanter Effekt auf die Zielgröße vorliegt. Hier sieht man beispielsweise,
+    #dass beim Wetter scheinbar nur Regen und Schnee einen signifikanten Einfluss auf die Anzahl Radfahrer ausübt. Ansonsten wirken sich ein
+    #Großteil der Koeffizienten signifikant auf die Anzahl Radfahrer aus.
+  
+  
+  #Güte des Modells:
+    #Das Bestimmtheitsmaß R-squared zeigt inwiefern die AV die UV erklärt. Sie zeigt dies durch den Anteil der Variabilität von Y, welcher
+    #durch die Regression erklärt wird. Der Wert liegt zwischen 0 und 1. In diesem Beispiel zeigt ein Wert von 0.9116 also, dass die zu
+    #erklärende abhängige Variable größtenteils durch die unabhängigen Variablen in der Regressionsfunktion erklärt wird. Allerdings wird
+    #mit steigender Zahl unabhängigerer Variablen das Bestimmtheitsmaß größer. Man sollte also das adjustierte Bestimmtheitsmaß nutzen. Dieses
+    #balanciert das Modell aus. In unserem Beispiel liegt aber auch dieses mit einem Wert von 0.9092 sehr hoch und eine hohe Güte des
+    #Modells ist damit gegeben.
+  
+  
+anova(df_regression)
+  #Bei der mehrfaktoriellen Varianzanalyse ANOVA werden Vergleiche kategoriell gleichzeitig angestellt. 
+
+  #Bedeutung der Kovariablen:
+  #Bei der ANOVA kann man die signifikanz des Einflusses in der Spalte F Value erkennen. Man kann erkennen, dass die Tageszeit (Stunde), die 
+  #Temperatur und die Tatsache ob ein Feiertag vorliegt oder nicht, den größten Einfluss auf die Anzahl Radfahrer hat. Das Wetter hat wieder den
+  #geringsten Einfluss.
+
+  #Güte des Modells:
+  #Die Güte des Modells lässt sich hier über die Quadratsumme Sum Sq bestimmen. Ein hoher Anteil an erklärter Varianz schließt auf eine hohe
+  #Güter des Modells. Dies liegt hier vor.
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+#Aufgabe 4 
+# Erstellen Sie mit Hilfe Ihres Regressionsmodells eine Vorhersage des stündlichen Verkehrsaufkommens
+#am 24.12.2018 mit folgenden Wetterbedingungen
+#• Szenario 1: Temperatur -5 Grad Celsius, bei Windstärke 10 km/h und Regen
+#• Szenario 2: Temperatur 0 Grad Celsius, bei Windstärke 25 km/h und Schneeregen
+#• Szenario 3: Temperatur 15 Grad Celsius, bei Windstärke 0 km/h und klarem Himmel
+#Vergleichen Sie die Szenarien und stellen Sie die Ergebnisse grafisch dar. Beachten Sie dabei, dass Sie
+#die Vorhersagen mit predict aus Ihrem Modell noch in die Exponentialfunktion exp einsetzen müssen,
+#um die Logarithmierung der Zielvariable wieder aufzuheben.
+# ----------------------------------------------------------------------------------------------------------------------------------------
+
+df_vorhersage <- data.frame(Datum = rep(ymd_hms("2018-12-24 00:00:00")+ (0:23)*60*60, 3),
+                            Temperatur = rep(c(-5,0,15), each = 24),
+                            Windstaerke = rep(c(10,25,0), each = 24),
+                            Wetter = rep(c("Regen","Schneeregen","Klarer Himmel"), each = 24),
+                            Feiertag = rep("ja", 24*3),
+                            Szenario = rep(1:3, each = 24))
+
+
+pred <- predict(df_regression, newdata = df_vorhersage)
+pred <- exp(pred)
+
+plot(df_vorhersage$Datum[df_vorhersage$Szenario==1], pred[df_vorhersage$Szenario==1], type = "l", lty = 1, ylim = c(0,500),xlab = "Uhrzeit", ylab = "Anzahl Radfahrer")
+lines(df_vorhersage$Datum[df_vorhersage$Szenario==2], pred[df_vorhersage$Szenario==2], type = "l", lty = 2)
+lines(df_vorhersage$Datum[df_vorhersage$Szenario==3], pred[df_vorhersage$Szenario==3], type = "l", lty = 3)
+legend("topleft", legend = paste("Szenario", 1:3), lty = 1:3)
+
+
+
+plot(df$Datum[df$Tag == 358], df$Anzahl[df$Tag == 358], type = "l",
+     xlab = "Uhrzeit", ylab = "Anzahl Radfahrer")
+
